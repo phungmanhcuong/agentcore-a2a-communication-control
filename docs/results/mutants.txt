@@ -1,0 +1,318 @@
+=== mutant: allow policy allows everything
+--- diff of src/act_teams/policy.py
+35c35
+<         return (caller, callee) in self.pairs
+---
+>         return True
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_policy.py::test_denied_pairs[pair0] - AssertionError: assert not True
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed in 0.06s
+KILLED  allow policy allows everything
+=== mutant: spend cap never enforced
+--- diff of src/act_teams/spend.py
+52c52
+<         if spent >= self.cap:
+---
+>         if False:
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_spend.py::test_cap_stops_the_next_request - Failed: DID NOT RAISE SpendLimitExceeded
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 2 passed in 0.05s
+KILLED  spend cap never enforced
+=== mutant: server middleware skips the allow check
+--- diff of src/act_teams/server.py
+120c120
+<         if not policy.allows(caller, name):
+---
+>         if False:
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_models_and_server.py::test_disallowed_or_missing_caller_is_refused_in_a_200_body[reviewer-1] - assert (200 == 200 and -32001 == -32003)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 6 passed in 3.18s
+KILLED  server middleware skips the allow check
+=== mutant: client skips the allow check
+--- diff of src/act_teams/a2a_client.py
+130c130
+<         self.policy.check(self.caller, callee)  # raises A2ADenied before any network use
+---
+>         pass
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_client.py::test_disallowed_call_raises_before_any_socket_is_used - AssertionError('a socket was opened for a disallowed call') [single exception in ExceptionGroup]
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 1 passed in 0.09s
+KILLED  client skips the allow check
+=== mutant: data_collection deny dropped
+--- diff of src/act_teams/models.py
+17c17
+< REQUEST_EXTRAS = {"provider": {"data_collection": "deny"}, "usage": {"include": True}}
+---
+> REQUEST_EXTRAS = {"provider": {"data_collection": "allow"}, "usage": {"include": True}}
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_models_and_server.py::test_every_request_denies_data_collection_and_cost_is_read - AssertionError: assert {'data_collection': 'allow'} == {'data_collection': 'deny'}
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 1.84s
+KILLED  data_collection deny dropped
+=== mutant: SigV4 signs a different service
+--- diff of src/act_teams/a2a_client.py
+28c28
+< SERVICE = "bedrock-agentcore"
+---
+> SERVICE = "execute-api"
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_client.py::test_sigv4_signature_shape - AssertionError: assert (True and '/us-east-1/bedrock-agentcore/aws4_request' in 'AWS4-HMAC-SHA256 Credential=AKIDEXAMPLE/20261010/us-east-1...
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 7 passed in 0.54s
+KILLED  SigV4 signs a different service
+=== mutant: terraform expands the rules backwards
+--- diff of infra/locals.tf
+34c34
+<   peers   = { for a in keys(local.agents) : a => sort([for p in local.pairs : p.to if p.from == a]) }
+---
+>   peers   = { for a in keys(local.agents) : a => sort([for p in local.pairs : p.from if p.to == a]) }
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra.py::test_parity_for_team_yaml - AssertionError: assert {'planner-1':...rker-3'], ...} == {'planner-1':...ewer-3'], ...}
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 13.37s
+KILLED  terraform expands the rules backwards
+=== mutant: P1 resource-policy Deny cut to GetAgentCard only
+--- diff of infra/resource_policy.tf
+50c50
+<     actions   = local.invoke_actions
+---
+>     actions   = ["bedrock-agentcore:GetAgentCard"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.37s
+KILLED  P1 resource-policy Deny cut to GetAgentCard only
+=== mutant: P2 resource-policy Deny condition inverted
+--- diff of infra/resource_policy.tf
+62c62
+<         test     = "StringNotEquals"
+---
+>         test     = "StringEquals"
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.40s
+KILLED  P2 resource-policy Deny condition inverted
+=== mutant: P3 resource-policy Allow principal widened to *
+--- diff of infra/resource_policy.tf
+42c42
+<         identifiers = local.allowed_principals[each.key]
+---
+>         identifiers = ["*"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.32s
+KILLED  P3 resource-policy Allow principal widened to *
+=== mutant: P4 invoke policy lists every agent
+--- diff of infra/iam.tf
+86c86
+<     resources = flatten([for p in each.value : [aws_bedrockagentcore_agent_runtime.agent[p].agent_runtime_arn, "${aws_bedrockagentcore_agent_runtime.agent[p].agent_runtime_arn}/*"]])
+---
+>     resources = flatten([for p in keys(local.agents) : [aws_bedrockagentcore_agent_runtime.agent[p].agent_runtime_arn, "${aws_bedrockagentcore_agent_runtime.agent[p].agent_runtime_arn}/*"]])
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.35s
+KILLED  P4 invoke policy lists every agent
+=== mutant: P5 base role gains bedrock:InvokeModel
+--- diff of infra/iam.tf
+41c41
+<     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams"]
+---
+>     actions   = ["logs:CreateLogGroup", "logs:CreateLogStream", "logs:PutLogEvents", "logs:DescribeLogStreams", "bedrock:InvokeModel"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.32s
+KILLED  P5 base role gains bedrock:InvokeModel
+=== mutant: P6 base role S3 resource widened to the whole bucket
+--- diff of infra/iam.tf
+48c48
+<     resources = ["${aws_s3_bucket.code.arn}/peers/${each.key}.json", "${aws_s3_bucket.code.arn}/code/agent.zip"]
+---
+>     resources = ["${aws_s3_bucket.code.arn}/*"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.31s
+KILLED  P6 base role S3 resource widened to the whole bucket
+=== mutant: P7 base role log-group resource widened
+--- diff of infra/iam.tf
+42c42
+<     resources = ["arn:aws:logs:${local.region}:${local.account_id}:log-group:${local.log_prefix}/${local.runtime_name[each.key]}-*", "arn:aws:logs:${local.region}:${local.account_id}:log-group:${local.log_prefix}/${local.runtime_name[each.key]}-*:*"]
+---
+>     resources = ["arn:aws:logs:${local.region}:${local.account_id}:log-group:*/${local.runtime_name[each.key]}-*", "arn:aws:logs:${local.region}:${local.account_id}:log-group:*/${local.runtime_name[each.key]}-*:*"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.40s
+KILLED  P7 base role log-group resource widened
+=== mutant: P8 base role workload-identity resource widened
+--- diff of infra/iam.tf
+66c66
+<     resources = ["${local.ac_arn_base}:workload-identity-directory/default", "${local.ac_arn_base}:workload-identity-directory/default/workload-identity/${local.runtime_name[each.key]}-*"]
+---
+>     resources = ["${local.ac_arn_base}:workload-identity-directory/default", "${local.ac_arn_base}:workload-identity-directory/default/workload-identity/*"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.44s
+KILLED  P8 base role workload-identity resource widened
+=== mutant: H1 runtime request_header_configuration removed
+--- diff of infra/runtimes.tf
+31,33d30
+<   request_header_configuration {
+<     request_header_allowlist = local.request_headers
+<   }
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.32s
+KILLED  H1 runtime request_header_configuration removed
+=== mutant: H2 allowlist names another header
+--- diff of infra/locals.tf
+47c47
+<   request_headers = ["X-Act-Caller", "X-Act-Token"]
+---
+>   request_headers = ["X-Wrong", "X-Act-Token"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.26s
+KILLED  H2 allowlist names another header
+=== mutant: H3 app renames its caller header
+--- diff of src/act_teams/a2a_client.py
+25c25
+< CALLER_HEADER = "X-Act-Caller"
+---
+> CALLER_HEADER = "X-Act-Who"
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra.py::test_terraform_forwards_exactly_the_headers_the_app_reads - AssertionError: assert ['x-act-calle...'x-act-token'] == ['x-act-token', 'x-act-who']
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 4 passed in 67.20s (0:01:07)
+KILLED  H3 app renames its caller header
+=== mutant: A1 local run may use the instance metadata service
+--- diff of src/act_teams/local.py
+51c51
+<         AWS_EC2_METADATA_DISABLED="true",
+---
+>         AWS_EC2_METADATA_DISABLED="false",
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_models_and_server.py::test_secret_id_set_locally_fails_without_any_network_call - AssertionError: assert 'HTTPClientError' == 'NoCredentialsError'
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 2 passed in 1.90s
+KILLED  A1 local run may use the instance metadata service
+=== mutant: R1 refusal answers HTTP 403 again (AgentCore turns that into 424)
+--- diff of src/act_teams/server.py
+30c30
+< REFUSAL_STATUS = 200
+---
+> REFUSAL_STATUS = 403
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_models_and_server.py::test_disallowed_or_missing_caller_is_refused_in_a_200_body[reviewer-1] - assert (403 == 200)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 6 passed in 3.08s
+KILLED  R1 refusal answers HTTP 403 again (AgentCore turns that into 424)
+=== mutant: T1 server skips the run-token check
+--- diff of src/act_teams/server.py
+115c115
+<         if token and request.headers.get(TOKEN_HEADER) != token:
+---
+>         if False:
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_run_token.py::test_right_caller_without_the_token_is_refused_with_200_and_32003 - assert (200 == 200 and -32001 == -32003)
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 6 passed in 2.60s
+KILLED  T1 server skips the run-token check
+=== mutant: T2 AWS deployment may start without a token
+--- diff of src/act_teams/server.py
+150c150
+<     if env.get("ACT_REQUIRE_RUN_TOKEN") == "true":
+---
+>     if False:
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_run_token.py::test_aws_deployment_refuses_to_start_without_a_token - Failed: DID NOT RAISE RuntimeError
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 3 passed in 1.46s
+KILLED  T2 AWS deployment may start without a token
+=== mutant: T3 client does not send the token
+--- diff of src/act_teams/a2a_client.py
+142c142
+<         if run_token:
+---
+>         if False:
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_run_token.py::test_client_sends_the_token_when_it_is_set_and_not_otherwise - KeyError: 'X-Act-Token'
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 8 passed in 2.60s
+KILLED  T3 client does not send the token
+=== mutant: T4 Terraform stops requiring the token
+--- diff of infra/runtimes.tf
+46c46
+<     ACT_REQUIRE_RUN_TOKEN    = "true"                                   # the container exits at start if the token cannot be read
+---
+>     ACT_REQUIRE_RUN_TOKEN    = "false"                                   # the container exits at start if the token cannot be read
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.36s
+KILLED  T4 Terraform stops requiring the token
+=== mutant: T5 Terraform puts the token in the environment
+--- diff of infra/runtimes.tf
+46a47
+>     ACT_RUN_TOKEN = random_password.run_token.result
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.63s
+KILLED  T5 Terraform puts the token in the environment
+=== mutant: T6 run-token secret read right widened
+--- diff of infra/iam.tf
+60c60
+<     resources = [aws_secretsmanager_secret.run_token.arn]
+---
+>     resources = ["arn:aws:secretsmanager:*:*:secret:*"]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_render.py::test_rendered_aws_layers_pass_the_terraform_test - AssertionError: terraform test rc=1
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed in 14.48s
+KILLED  T6 run-token secret read right widened
+=== mutant: T7 runtimes stop waiting for the token value
+--- diff of infra/runtimes.tf
+53c53
+<   depends_on = [aws_iam_role_policy.base, aws_secretsmanager_secret_version.run_token]
+---
+>   depends_on = [aws_iam_role_policy.base]
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_infra_static.py::test_runtimes_wait_for_the_run_token_value - AssertionError: assert ('aws_secretsmanager_secret_version.run_token' in ['aws_iam_role_policy.base'])
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 7 passed in 12.88s
+KILLED  T7 runtimes stop waiting for the token value
+=== mutant: T8 main copies the secret token into os.environ
+--- diff of src/act_teams/server.py
+171c171
+<     token = resolve_run_token()
+---
+>     token = resolve_run_token(); os.environ["ACT_RUN_TOKEN"] = token or ""
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_run_token.py::test_main_keeps_the_secret_token_out_of_the_environment - AssertionError: assert ('ACT_RUN_TOKEN' not in environ({'PYTHONPATH': '/tmp/mut.tPRpwO/w/src', 'PYTHONDONTW...
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 11 passed in 2.68s
+KILLED  T8 main copies the secret token into os.environ
+=== mutant: T9 client ignores a token passed in
+--- diff of src/act_teams/a2a_client.py
+141c141
+<         run_token = self.run_token or os.environ.get("ACT_RUN_TOKEN")  # local runs set the env var: a per-run secret
+---
+>         run_token = os.environ.get("ACT_RUN_TOKEN")  # local runs set the env var: a per-run secret
+======================================================================================= short test summary info ========================================================================================
+FAILED tests/test_run_token.py::test_client_sends_a_token_passed_in_without_the_environment - KeyError: 'X-Act-Token'
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! stopping after 1 failures !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+1 failed, 10 passed in 2.70s
+KILLED  T9 client ignores a token passed in
+survivors: 0

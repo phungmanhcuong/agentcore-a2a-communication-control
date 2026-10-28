@@ -1,0 +1,49 @@
+# One config for the whole project: Python (src/act_teams/config.py) and Terraform (infra/locals.tf) both read this file.
+project: act-teams
+region: us-east-1
+
+a2a:
+  # How an agent proves who it is to a peer. none = local only; sigv4 = AgentCore with IAM; bearer = AgentCore with a JWT authorizer.
+  auth: sigv4
+  # Deny by default. A call is allowed only if a rule matches. Each side is an agent name or "role:<role>".
+  # Who may start a task (the external caller "user"). On AWS this is the test invoker role, on the entry agents only.
+  entry: ["role:planner"]
+  allow:
+    - {from: "role:planner", to: "role:worker"}
+    - {from: "role:worker", to: "role:reviewer"}
+    - {from: planner-1, to: reviewer-1}
+
+runtime:
+  python: PYTHON_3_13
+  idle_timeout_s: 300     # AgentCore lifecycle: idle runtime sessions end after this
+  max_lifetime_s: 900
+
+# Cheap PAID OpenRouter models with tool calling, probed 2026-10-10. Prices are USD per million tokens.
+models:
+  planner:  {id: openai/gpt-oss-120b,   max_tokens: 2000, price_in_per_m: 0.037, price_out_per_m: 0.170}
+  worker:   {id: openai/gpt-oss-20b,    max_tokens: 2000, price_in_per_m: 0.018, price_out_per_m: 0.090}
+  reviewer: {id: mistralai/mistral-nemo, max_tokens: 1000, price_in_per_m: 0.029, price_out_per_m: 0.030}
+
+roles:
+  planner:
+    model: planner
+    prompt: |
+      You are a planner. Split the user's task into small steps. Use ask_peer to give each calculation step to a worker agent
+      (peer names are listed in your tool description). Then reply with the final answer and say which peer helped.
+      Keep every message short.
+    tools: [ask_peer]
+    agents: [planner-1, planner-2, planner-3]
+  worker:
+    model: worker
+    prompt: |
+      You are a worker. Do the calculation you are given with the calculator tool. If a reviewer peer is available, send your
+      result to it with ask_peer and include the review verdict in your reply. Keep every message short.
+    tools: [calculator, ask_peer]
+    agents: [worker-1, worker-2, worker-3]
+  reviewer:
+    model: reviewer
+    prompt: |
+      You are a reviewer. You get a calculation and a claimed result. Recompute it with the calculator tool and reply with
+      exactly "VERDICT: correct" or "VERDICT: wrong, expected <value>". Keep it short.
+    tools: [calculator]
+    agents: [reviewer-1, reviewer-2, reviewer-3]
